@@ -14,6 +14,7 @@ export const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [isReadOnly, setIsReadOnly] = useState(true);
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
@@ -29,7 +30,8 @@ export const LoginPage = () => {
     const timer = setTimeout(() => {
       setEmail('');
       setPassword('');
-    }, 100);
+      setIsReadOnly(false);
+    }, 300);
     return () => clearTimeout(timer);
   }, []);
 
@@ -98,8 +100,10 @@ export const LoginPage = () => {
               <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
               <input
                 type="email"
-                name="email"
-                id="login-email"
+                name="auth_usr_id"
+                id="auth_usr_id"
+                readOnly={isReadOnly}
+                onFocus={() => setIsReadOnly(false)}
                 autoComplete="off"
                 required
                 value={email}
@@ -125,9 +129,11 @@ export const LoginPage = () => {
               <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
               <input
                 type="password"
-                name="password"
-                id="login-password"
-                autoComplete="new-password"
+                name="auth_usr_sec"
+                id="auth_usr_sec"
+                readOnly={isReadOnly}
+                onFocus={() => setIsReadOnly(false)}
+                autoComplete="one-time-code"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
