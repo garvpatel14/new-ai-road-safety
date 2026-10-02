@@ -108,7 +108,7 @@ export const LoginPage = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 placeholder="name@saferoad.ai"
               />
             </div>
@@ -137,7 +137,7 @@ export const LoginPage = () => {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 placeholder="••••••••"
               />
             </div>
