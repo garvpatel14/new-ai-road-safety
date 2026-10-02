@@ -25,8 +25,6 @@ export const Sidebar = ({ isOpen, onClose }) => {
 
   const userNavItems = [
     { name: 'Live Road Scan', path: '/live-scan', icon: Camera, badge: 'HUD' },
-    { name: 'GPS Location Drive', path: '/gps-location', icon: Radio, badge: 'GNSS' },
-    { name: 'Road Quality Map', path: '/map', icon: MapPin },
     { name: 'Safe Route Planner', path: '/safe-route', icon: Navigation, badge: 'AI' },
     { name: 'Report Damage', path: '/report-damage', icon: AlertTriangle },
     { name: 'Analytics', path: '/analytics', icon: BarChart3 },

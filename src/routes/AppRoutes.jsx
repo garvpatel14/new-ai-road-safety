@@ -70,8 +70,7 @@ export const AppRoutes = () => {
           {/* User Side Modules */}
           <Route path="/dashboard" element={<UserRoute><LiveRoadScanningPage /></UserRoute>} />
           <Route path="/live-scan" element={<UserRoute><LiveRoadScanningPage /></UserRoute>} />
-          <Route path="/gps-location" element={<UserRoute><GpsLocationPage /></UserRoute>} />
-          <Route path="/map" element={<InteractiveMapPage />} />
+          <Route path="/gps-location" element={<Navigate to="/dashboard" replace />} />
           <Route path="/safe-route" element={<SafeRoutePage />} />
           <Route path="/report-damage" element={<ReportDamagePage />} />
           <Route path="/my-reports" element={<MyReportsPage />} />
@@ -80,6 +79,7 @@ export const AppRoutes = () => {
 
           {/* Municipality Side Modules */}
           <Route path="/admin" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
+          <Route path="/map" element={<AdminRoute><InteractiveMapPage /></AdminRoute>} />
           <Route path="/admin/heatmap" element={<AdminRoute><RoadHeatmapPage /></AdminRoute>} />
           <Route path="/admin/potholes" element={<AdminRoute><PotholeManagementPage /></AdminRoute>} />
           <Route path="/admin/repairs" element={<AdminRoute><RepairManagementPage /></AdminRoute>} />

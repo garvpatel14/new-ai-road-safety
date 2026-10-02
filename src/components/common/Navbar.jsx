@@ -72,13 +72,15 @@ export const Navbar = ({ onToggleSidebar, isSidebarOpen, isPublic = false }) => 
               <span className="w-2 h-2 rounded-full bg-safety-500 animate-ping" />
               Live Scanner
             </Link>
-            <Link
-              to={isPublic ? '/login' : (isAuthenticated ? '/map' : '/login')}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition"
-            >
-              <MapPin className="w-3.5 h-3.5 text-emerald-500" />
-              RQI Map
-            </Link>
+            {isAdmin && (
+              <Link
+                to="/map"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition"
+              >
+                <MapPin className="w-3.5 h-3.5 text-emerald-500" />
+                RQI Map
+              </Link>
+            )}
           </div>
 
           {/* Right Action Icons */}

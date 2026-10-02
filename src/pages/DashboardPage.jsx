@@ -29,8 +29,6 @@ export const DashboardPage = () => {
 
   const quickTools = [
     { name: 'Live Road Scan', path: '/live-scan', icon: Camera, color: 'text-safety-500 bg-safety-500/10', desc: 'Real-time camera scanner HUD' },
-    { name: 'GPS Drive Telemetry', path: '/gps-location', icon: Radio, color: 'text-emerald-500 bg-emerald-500/10', desc: 'GNSS lock & drive tracker' },
-    { name: 'Road Quality Map', path: '/map', icon: Activity, color: 'text-purple-500 bg-purple-500/10', desc: 'RQI surface condition heatmap' },
     { name: 'Safe Route Planner', path: '/safe-route', icon: Navigation, color: 'text-amber-500 bg-amber-500/10', desc: 'Zero-hazard AI route planner' },
     { name: 'Report Damage', path: '/report-damage', icon: PlusCircle, color: 'text-red-500 bg-red-500/10', desc: 'Submit manual hazard report' },
   ];
@@ -60,7 +58,7 @@ export const DashboardPage = () => {
       </div>
 
       {/* QUICK LAUNCHER CARDS FOR USER MODULES */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {quickTools.map((t) => {
           const Icon = t.icon;
           return (
