@@ -3,7 +3,7 @@ const db = require('../config/db');
 // Get all reports with optional PostGIS spatial radius & filters
 const getAllReports = async (req, res) => {
   try {
-    const { status, type, severity, lat, lng, radiusKm, search } = req.query;
+    const { status, type, severity, lat, lng, radiusKm, search, reportedBy } = req.query;
     let queryText = `
       SELECT 
         r.id, r.type, r.severity, r.status, r.description, r.location_name as "locationName",
@@ -33,7 +33,9 @@ const getAllReports = async (req, res) => {
       }
     }
 
-    if (status && status !== 'all') {
+    if (status === 'Active') {
+      queryText += ` AND r.status != 'Resolved' `;
+    } else if (status && status !== 'all' && status !== 'All') {
       params.push(status);
       queryText += ` AND r.status ILIKE $${params.length} `;
     }
@@ -46,6 +48,11 @@ const getAllReports = async (req, res) => {
     if (severity && severity !== 'all') {
       params.push(severity);
       queryText += ` AND r.severity ILIKE $${params.length} `;
+    }
+
+    if (reportedBy && reportedBy !== 'all') {
+      params.push(reportedBy);
+      queryText += ` AND r.reported_by ILIKE $${params.length} `;
     }
 
     if (search) {
@@ -188,6 +195,14 @@ const createReport = async (req, res) => {
       image || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80',
       'Citizen submitted report queued for municipal engineer verification.'
     ]);
+
+    // Increment user reports_submitted counter
+    if (reportedBy) {
+      await db.query(
+        'UPDATE users SET reports_submitted = COALESCE(reports_submitted, 0) + 1 WHERE name ILIKE $1',
+        [reportedBy]
+      ).catch(() => {});
+    }
 
     // Create notification
     await db.query(`

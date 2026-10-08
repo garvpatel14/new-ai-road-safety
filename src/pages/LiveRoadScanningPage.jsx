@@ -34,8 +34,11 @@ export const LiveRoadScanningPage = () => {
 
   // Video and Stream Sources:
   // 'user' = Laptop Webcam
-  // 'environment' = Mobile Rear Camera (only on smartphone)
-  const [inputSource, setInputSource] = useState('user');
+  const [inputSource, setInputSource] = useState(() => {
+    return typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
+      ? 'environment'
+      : 'user';
+  });
   const [isScanning, setIsScanning] = useState(false);
   const [sensitivity, setSensitivity] = useState('High'); // Low, Medium, High
   const [audioAlerts, setAudioAlerts] = useState(true);
@@ -56,7 +59,9 @@ export const LiveRoadScanningPage = () => {
   });
 
   // Anand Map State
-  const [mapReports, setMapReports] = useState(INITIAL_REPORTS);
+  const [mapReports, setMapReports] = useState(() =>
+    INITIAL_REPORTS.filter(r => (r.status || '').toLowerCase() !== 'resolved')
+  );
   const [mapCenter, setMapCenter] = useState(ANAND_CENTER);
 
   // ML Server state
@@ -142,7 +147,7 @@ export const LiveRoadScanningPage = () => {
   }, []);
 
   // 3. ML Server health check — runs once on mount
-  const ML_URL = 'http://localhost:8000';
+  const ML_URL = '/ml';
   useEffect(() => {
     let cancelled = false;
     const check = async () => {
@@ -187,7 +192,7 @@ export const LiveRoadScanningPage = () => {
             image: b64,
             lat:   coordsRef.current.lat,
             lng:   coordsRef.current.lng,
-            conf:  sensitivity === 'High' ? 0.35 : sensitivity === 'Medium' ? 0.50 : 0.65,
+            conf:  sensitivity === 'High' ? 0.50 : sensitivity === 'Medium' ? 0.55 : 0.65,
           }),
           signal: AbortSignal.timeout(5000),
         });
@@ -214,9 +219,9 @@ export const LiveRoadScanningPage = () => {
             severity:   det.severity,
           });
 
-          // Log to state + DB (reuse existing handler)
+          // Log to state + DB whenever a pothole is detected by YOLO
           const now = performance.now();
-          if (now - lastDetectionTimeRef.current > 3000) {
+          if (now - lastDetectionTimeRef.current > 2000) {
             lastDetectionTimeRef.current = now;
             handlePotholeFound({
               id:         `ML-${Date.now().toString().slice(-4)}`,
@@ -272,16 +277,26 @@ export const LiveRoadScanningPage = () => {
 
       // Camera input modes: 'environment' (mobile back) or 'user' (laptop front)
       try {
-        const constraints = {
-          video: {
-            facingMode: inputSource === 'environment' ? { ideal: 'environment' } : { exact: 'user' },
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          },
-          audio: false
-        };
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('NO_MEDIA_DEVICES');
+        }
 
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        let stream;
+        try {
+          const constraints = {
+            video: {
+              facingMode: inputSource === 'environment' ? { ideal: 'environment' } : { ideal: 'user' },
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            },
+            audio: false
+          };
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (constraintErr) {
+          console.warn('Strict camera constraints failed, attempting generic video fallback:', constraintErr);
+          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        }
+
         if (!isCurrent) {
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -297,16 +312,23 @@ export const LiveRoadScanningPage = () => {
         addToast(
           inputSource === 'environment'
             ? 'Mobile Rear Camera connected!'
-            : 'Laptop Webcam connected!',
+            : 'Camera connected!',
           'success'
         );
       } catch (err) {
         console.warn('Camera stream error:', err);
         if (isCurrent) {
-          addToast(
-            `Camera not accessible. Please check camera permissions.`,
-            'warning'
-          );
+          if (!window.isSecureContext) {
+            addToast(
+              'Camera requires HTTPS. Please open with https:// on mobile.',
+              'warning'
+            );
+          } else {
+            addToast(
+              'Camera not accessible. Please check camera permissions in browser.',
+              'warning'
+            );
+          }
         }
       }
     };
@@ -692,7 +714,7 @@ export const LiveRoadScanningPage = () => {
                 viewMode === 'split' ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow' : 'text-slate-500'
               }`}
             >
-              Split View
+              Camera & Map
             </button>
             <button
               onClick={() => setViewMode('camera')}
@@ -822,13 +844,13 @@ export const LiveRoadScanningPage = () => {
         </div>
       )}
 
-      {/* MAIN LAYOUT: CAMERA HUD + REAL-TIME MAP */}
-      <div className={`grid gap-6 ${viewMode === 'split' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
+      {/* MAIN LAYOUT: CAMERA HUD (UPPER) + REAL-TIME MAP (LOWER) */}
+      <div className="flex flex-col gap-6 w-full">
         
-        {/* VIEWPORT: CAMERA & YOLO CANVAS (Hidden in map-only mode) */}
+        {/* UPPER VIEWPORT: CAMERA & YOLO CANVAS (Hidden in map-only mode) */}
         {viewMode !== 'map' && (
-          <div className="space-y-4">
-            <div className="relative rounded-3xl overflow-hidden glass-panel border border-slate-200 dark:border-slate-800 shadow-2xl bg-slate-950 aspect-video group">
+          <div className="space-y-4 w-full">
+            <div className="relative rounded-3xl overflow-hidden glass-panel border border-slate-200 dark:border-slate-800 shadow-2xl bg-slate-950 w-full h-[500px] sm:h-[580px] md:h-[660px] group">
               <video
                 ref={videoRef}
                 playsInline
@@ -843,8 +865,8 @@ export const LiveRoadScanningPage = () => {
 
               {!isScanning && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 bg-slate-950/60 backdrop-blur-xs space-y-3 pointer-events-none">
-                  <Camera className="w-12 h-12 text-slate-500 animate-pulse" />
-                  <p className="text-sm font-bold text-white">YOLO Vision Engine on Standby</p>
+                  <Camera className="w-14 h-14 text-slate-500 animate-pulse" />
+                  <p className="text-base font-bold text-white">YOLO Vision Engine on Standby</p>
                   <p className="text-xs text-slate-400 max-w-sm text-center">
                     Select your camera mode above, then click{' '}
                     <span className="text-safety-400 font-bold">"START LIVE SCAN"</span>.
@@ -854,7 +876,7 @@ export const LiveRoadScanningPage = () => {
 
               {/* HUD Overlay Bar */}
               <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none z-20">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950/80 backdrop-blur-md text-white text-xs font-bold border border-white/10">
+                <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-950/80 backdrop-blur-md text-white text-xs font-bold border border-white/10">
                   <span className={`w-2.5 h-2.5 rounded-full ${isScanning ? 'bg-emerald-500 animate-ping' : 'bg-red-500'}`} />
                   <span>
                     {isScanning
@@ -870,61 +892,8 @@ export const LiveRoadScanningPage = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="px-3 py-1.5 rounded-xl bg-slate-950/80 backdrop-blur-md text-slate-300 text-xs font-mono border border-white/10">
+                  <span className="px-3.5 py-2 rounded-xl bg-slate-950/80 backdrop-blur-md text-slate-300 text-xs font-mono border border-white/10">
                     Model: YOLOv8-iWatchRoad | {scannerStats.fps} FPS
-                  </span>
-                </div>
-              </div>
-
-              {/* Bottom Controls */}
-              <div className="absolute bottom-4 left-4 right-4 flex flex-wrap items-center justify-between gap-2 bg-slate-950/85 backdrop-blur-md p-3 rounded-2xl border border-white/10 text-white text-xs z-20">
-                <div className="flex items-center gap-4">
-                  <div>
-                    <span className="text-[10px] uppercase text-slate-400 font-bold block">Sensitivity</span>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      {['Low', 'Medium', 'High'].map((level) => (
-                        <button
-                          key={level}
-                          onClick={() => setSensitivity(level)}
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            sensitivity === level ? 'bg-brand-600 text-white' : 'bg-slate-800 text-slate-400'
-                          }`}
-                        >
-                          {level}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => setAudioAlerts(!audioAlerts)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold border transition ${
-                      audioAlerts
-                        ? 'bg-safety-600/20 text-safety-400 border-safety-500/30'
-                        : 'bg-slate-800 text-slate-400 border-slate-700'
-                    }`}
-                  >
-                    {audioAlerts ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
-                    <span>{audioAlerts ? 'Alert On' : 'Muted'}</span>
-                  </button>
-
-                  <button
-                    onClick={() => setAutoLogToDb(!autoLogToDb)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold border transition ${
-                      autoLogToDb
-                        ? 'bg-emerald-600/20 text-emerald-400 border-emerald-500/30'
-                        : 'bg-slate-800 text-slate-400 border-slate-700'
-                    }`}
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>{autoLogToDb ? 'Auto-Log Map & DB' : 'Manual'}</span>
-                  </button>
-                </div>
-
-                <div className="text-right">
-                  <span className="text-[10px] uppercase text-slate-400 font-bold block">GPS Coordinates</span>
-                  <span className="font-mono text-emerald-400 font-bold">
-                    {coords.lat.toFixed(4)}° N, {coords.lng.toFixed(4)}° E
                   </span>
                 </div>
               </div>
@@ -965,10 +934,10 @@ export const LiveRoadScanningPage = () => {
           </div>
         )}
 
-        {/* COLUMN 2: REAL-TIME ANAND, GUJARAT MAP RADAR */}
+        {/* LOWER SECTION: REAL-TIME ANAND, GUJARAT MAP RADAR */}
         {(viewMode === 'split' || viewMode === 'map') && (
-          <div className="space-y-4">
-            <div className="relative rounded-3xl overflow-hidden glass-panel border border-slate-200 dark:border-slate-800 shadow-2xl h-[480px]">
+          <div className="space-y-4 w-full">
+            <div className="relative rounded-3xl overflow-hidden glass-panel border border-slate-200 dark:border-slate-800 shadow-2xl w-full h-[500px] sm:h-[580px] md:h-[660px]">
               <LeafletMap
                 center={mapCenter}
                 zoom={14}

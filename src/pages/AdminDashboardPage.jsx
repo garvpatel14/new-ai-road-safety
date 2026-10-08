@@ -19,11 +19,11 @@ import {
   Search,
   Download,
   Flame,
-  UserCheck,
   BarChart3,
-  Eye,
   Building,
-  Loader2
+  Loader2,
+  MapPin,
+  Eye
 } from 'lucide-react';
 
 export const AdminDashboardPage = () => {
@@ -39,12 +39,18 @@ export const AdminDashboardPage = () => {
   const fetchAdminData = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/reports');
-      if (res.data?.reports && res.data.reports.length > 0) {
-        setReports(res.data.reports);
+      const [reportsRes, usersRes] = await Promise.allSettled([
+        api.get('/reports'),
+        api.get('/admin/users'),
+      ]);
+      if (reportsRes.status === 'fulfilled' && reportsRes.value.data?.reports) {
+        setReports(reportsRes.value.data.reports);
+      }
+      if (usersRes.status === 'fulfilled' && usersRes.value.data?.users) {
+        setUsers(usersRes.value.data.users);
       }
     } catch (err) {
-      console.warn('Fallback admin reports:', err.message);
+      console.warn('Fallback admin data:', err.message);
     } finally {
       setLoading(false);
     }
@@ -57,7 +63,7 @@ export const AdminDashboardPage = () => {
   const municipalModules = [
     { name: 'Road Heatmap', path: '/admin/heatmap', icon: Flame, color: 'text-red-500 bg-red-500/10', desc: 'Defect density & corridor risk' },
     { name: 'Pothole Management', path: '/admin/potholes', icon: FileText, color: 'text-brand-500 bg-brand-500/10', desc: 'Triage & priority matrix sorting' },
-    { name: 'Verification Desk', path: '/admin/verification', icon: UserCheck, color: 'text-emerald-500 bg-emerald-500/10', desc: 'AI confidence & engineer audit' },
+    { name: 'Interactive Map', path: '/map', icon: MapPin, color: 'text-emerald-500 bg-emerald-500/10', desc: 'RQI road quality & geospatial map' },
     { name: 'City Analytics', path: '/analytics', icon: BarChart3, color: 'text-purple-500 bg-purple-500/10', desc: 'SLA response times & metrics' },
   ];
 
@@ -119,15 +125,21 @@ export const AdminDashboardPage = () => {
   };
 
   // Handle User Role Toggle
-  const handleToggleUserRole = (userId) => {
+  const handleToggleUserRole = async (userId) => {
+    const targetUser = users.find(u => u.id === userId);
+    if (!targetUser) return;
+    const currentRole = (targetUser.role || '').toLowerCase();
+    const newRole = currentRole === 'admin' ? 'user' : 'admin';
+
     setUsers(prev =>
-      prev.map(u =>
-        u.id === userId
-          ? { ...u, role: u.role.includes('Admin') ? 'Civilian Inspector' : 'Admin Supervisor' }
-          : u
-      )
+      prev.map(u => (u.id === userId ? { ...u, role: newRole } : u))
     );
-    addToast('User role updated.', 'info');
+    try {
+      await api.put(`/admin/users/${userId}/role`, { role: newRole });
+      addToast(`User role updated to ${newRole === 'admin' ? 'Admin' : 'User'}.`, 'success');
+    } catch (e) {
+      addToast('Failed to update user role on server.', 'error');
+    }
   };
 
   return (
@@ -261,7 +273,7 @@ export const AdminDashboardPage = () => {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {reports
-                  .filter(r => r.id.toLowerCase().includes(searchQuery.toLowerCase()) || r.locationName.toLowerCase().includes(searchQuery.toLowerCase()))
+                  .filter(r => (r?.id || '').toLowerCase().includes(searchQuery.toLowerCase()) || (r?.locationName || '').toLowerCase().includes(searchQuery.toLowerCase()))
                   .map((r) => (
                     <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
                       <td className="p-4 font-bold text-slate-900 dark:text-white">{r.id}</td>
@@ -345,13 +357,15 @@ export const AdminDashboardPage = () => {
                 {users.map((u) => (
                   <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
                     <td className="p-4 flex items-center gap-3">
-                      <img src={u.avatar} alt={u.name} className="w-8 h-8 rounded-full object-cover" />
+                      <div className="w-8 h-8 rounded-full bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-600 dark:text-brand-400 shrink-0">
+                        <Users className="w-4 h-4" />
+                      </div>
                       <span className="font-bold text-slate-900 dark:text-white">{u.name}</span>
                     </td>
                     <td className="p-4 text-slate-600 dark:text-slate-400">{u.email}</td>
                     <td className="p-4 font-semibold text-brand-600 dark:text-brand-400">{u.role}</td>
                     <td className="p-4"><StatusBadge status={u.status} /></td>
-                    <td className="p-4 font-bold text-center">{u.reportsSubmitted}</td>
+                    <td className="p-4 font-bold text-center">{u.reportsSubmitted ?? u.reports_submitted ?? 0}</td>
                     <td className="p-4 text-right">
                       <button
                         onClick={() => handleToggleUserRole(u.id)}

@@ -82,10 +82,6 @@ export const GpsTelemetryControl = ({ onCoordsUpdate, compact = false }) => {
           <span className="font-extrabold text-slate-900 dark:text-white">GPS Lock</span>
         </div>
 
-        <div className="text-slate-600 dark:text-slate-300 font-mono">
-          {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
-        </div>
-
         <div className="px-2 py-0.5 rounded-lg bg-brand-500/10 text-brand-600 dark:text-brand-400 font-bold">
           {speed} km/h
         </div>

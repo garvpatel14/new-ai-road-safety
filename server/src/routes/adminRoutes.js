@@ -6,6 +6,8 @@ const {
   updateWorkOrder,
   getVerificationQueue,
   verifyQueueItem,
+  getUsers,
+  updateUserRole,
 } = require('../controllers/adminController');
 
 // Municipality work orders
@@ -16,5 +18,9 @@ router.put('/work-orders/:id', updateWorkOrder);
 // Road verification desk
 router.get('/verification-queue', getVerificationQueue);
 router.put('/verification-queue/:id', verifyQueueItem);
+
+// User Management
+router.get('/users', getUsers);
+router.put('/users/:id/role', updateUserRole);
 
 module.exports = router;

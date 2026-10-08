@@ -1,11 +1,14 @@
-import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip, useMap, useMapEvents } from 'react-leaflet';
+import React, { useEffect, useMemo } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip, Circle, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { StatusBadge } from '../common/StatusBadge';
 import { MapPin, AlertTriangle, ShieldCheck, Zap, Navigation } from 'lucide-react';
+import { getSafeImageUrl, handleImageError } from '../../utils/imageUtils';
 
 // Default: Center of Anand, Gujarat, India
-export const ANAND_CENTER = [22.5645, 72.9289];
+// Note: exported as a named const from this file; consumers can import it from here
+const ANAND_CENTER = [22.5645, 72.9289];
+export { ANAND_CENTER };
 
 // Dynamic Custom HTML Marker Creator for Road Hazards
 const createHazardMarker = (type, severity, isNew = false) => {
@@ -156,10 +159,24 @@ const MapViewUpdater = ({ center, zoom }) => {
   return null;
 };
 
+// Map bounds dynamic updater
+const MapBoundsUpdater = ({ bounds }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (bounds && Array.isArray(bounds) && bounds.length === 2 && bounds[0] && bounds[1]) {
+      try {
+        map.fitBounds(bounds, { padding: [45, 45], maxZoom: 15, animate: true });
+      } catch (e) {}
+    }
+  }, [bounds, map]);
+  return null;
+};
+
 export const LeafletMap = ({
   reports = [],
   center = ANAND_CENTER,
   zoom = 13,
+  bounds = null,
   polyline = null,
   routes = [],
   origin = null,
@@ -167,10 +184,20 @@ export const LeafletMap = ({
   liveCoords = null,
   rqiSegments = [],
   showRqiLayer = false,
+  heatmapMode = false,
+  heatRadius = 150,
   onMapClick = null,
+  onMarkerClick = null,
   interactive = true,
   className = '',
+  hideResolved = true,
 }) => {
+  // Filter out resolved reports from the map by default
+  const activeReports = useMemo(() => {
+    if (!hideResolved) return reports;
+    return reports.filter(r => (r.status || '').toLowerCase() !== 'resolved');
+  }, [reports, hideResolved]);
+
   return (
     <div className={`w-full h-full min-h-[420px] rounded-2xl overflow-hidden shadow-inner border border-slate-200 dark:border-slate-800 relative z-10 ${className}`}>
       <style>{`
@@ -195,6 +222,7 @@ export const LeafletMap = ({
 
         {/* Dynamic Map Controller */}
         <MapViewUpdater center={center} zoom={zoom} />
+        {bounds && <MapBoundsUpdater bounds={bounds} />}
 
         {/* Map Click Listener */}
         {onMapClick && <MapClickHandler onMapClick={onMapClick} />}
@@ -308,20 +336,56 @@ export const LeafletMap = ({
           </Marker>
         )}
 
+        {/* Heatmap density glow circles */}
+        {heatmapMode &&
+          activeReports.map((report) => {
+            if (!report.lat || !report.lng) return null;
+            const isCrit = report.severity === 'Critical';
+            const isHigh = report.severity === 'High';
+            const color = isCrit ? '#ef4444' : isHigh ? '#f97316' : '#eab308';
+            const radius = isCrit ? heatRadius * 1.6 : isHigh ? heatRadius * 1.2 : heatRadius;
+            return (
+              <Circle
+                key={`heat-${report.id || `${report.lat}-${report.lng}`}`}
+                center={[report.lat, report.lng]}
+                radius={radius}
+                pathOptions={{
+                  fillColor: color,
+                  fillOpacity: isCrit ? 0.45 : isHigh ? 0.35 : 0.22,
+                  color: color,
+                  weight: 1.5,
+                  opacity: 0.6,
+                }}
+              >
+                <Tooltip sticky>
+                  <div className="text-xs p-1">
+                    <p className="font-extrabold" style={{ color }}>{report.type} ({report.severity})</p>
+                    <p className="text-slate-700 font-semibold">{report.locationName || 'Hazard Location'}</p>
+                    <p className="text-[10px] text-slate-500">Priority Score: {report.priorityScore || 80}/100</p>
+                  </div>
+                </Tooltip>
+              </Circle>
+            );
+          })}
+
         {/* Pothole & Road Hazard Markers */}
-        {reports.map((report) => (
+        {activeReports.map((report) => (
           <Marker
             key={report.id || `rep-${report.lat}-${report.lng}`}
             position={[report.lat, report.lng]}
             icon={createHazardMarker(report.type, report.severity, report.isNew || report.justDetected)}
+            eventHandlers={onMarkerClick ? {
+              click: () => onMarkerClick(report),
+            } : {}}
           >
             <Popup className="custom-popup">
               <div className="p-1 max-w-xs space-y-2 text-slate-800">
                 {report.image && (
-                  <div className="relative h-28 w-full rounded-lg overflow-hidden bg-slate-100">
+                  <div className="relative h-28 w-full rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800">
                     <img
-                      src={report.image}
+                      src={getSafeImageUrl(report.image, report.type)}
                       alt={report.type}
+                      onError={(e) => handleImageError(e, report.type)}
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute top-2 right-2">
@@ -346,6 +410,14 @@ export const LeafletMap = ({
                   <span>{report.depthCm ? `Depth: ${report.depthCm} cm` : (report.date || 'Today')}</span>
                   <span className="font-semibold text-brand-600">Conf: {report.aiConfidence || '95%'}</span>
                 </div>
+                {onMarkerClick && (
+                  <button
+                    onClick={() => onMarkerClick(report)}
+                    className="w-full mt-1 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-[11px] font-bold transition"
+                  >
+                    View Full Details →
+                  </button>
+                )}
               </div>
             </Popup>
           </Marker>

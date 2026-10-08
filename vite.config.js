@@ -8,6 +8,18 @@ export default defineConfig({
     host: true,
     port: 3000,
     open: true,
+    allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+      '/ml': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/ml/, ''),
+      }
+    },
     watch: {
       ignored: ['**/server/**', '**/dist/**']
     }

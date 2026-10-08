@@ -23,13 +23,12 @@ const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const userId = `USR-${Date.now().toString().slice(-4)}`;
-    const avatar = `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80`;
 
     const result = await db.query(
-      `INSERT INTO users (id, name, email, password, role, status, reports_submitted, avatar)
-       VALUES ($1, $2, $3, $4, 'user', 'Active', 0, $5)
-       RETURNING id, name, email, role, status, reports_submitted, avatar`,
-      [userId, name, email, hashedPassword, avatar]
+      `INSERT INTO users (id, name, email, password, role, status, reports_submitted)
+       VALUES ($1, $2, $3, $4, 'user', 'Active', 0)
+       RETURNING id, name, email, role, status, reports_submitted`,
+      [userId, name, email, hashedPassword]
     );
 
     const user = result.rows[0];
@@ -196,4 +195,73 @@ const resetPassword = async (req, res) => {
   }
 };
 
-module.exports = { register, login, getProfile, forgotPassword, resetPassword };
+// ─── Update Profile ──────────────────────────────────────────────────────────
+
+const updateProfile = async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    if (!name || !email) {
+      return res.status(400).json({ error: 'Name and email are required' });
+    }
+
+    // Check if the new email is already taken by another user
+    const emailCheck = await db.query(
+      'SELECT id FROM users WHERE email = $1 AND id != $2',
+      [email, req.user.id]
+    );
+    if (emailCheck.rows.length > 0) {
+      return res.status(400).json({ error: 'Email is already in use by another account' });
+    }
+
+    const result = await db.query(
+      `UPDATE users SET name = $1, email = $2 WHERE id = $3
+       RETURNING id, name, email, role, status, reports_submitted, avatar, created_at`,
+      [name, email, req.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    return res.json({ message: 'Profile updated successfully', user: result.rows[0] });
+  } catch (err) {
+    console.error('Update profile error:', err);
+    return res.status(500).json({ error: 'Server error updating profile' });
+  }
+};
+
+// ─── Change Password ─────────────────────────────────────────────────────────
+
+const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current and new password are required' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    }
+
+    // Fetch user with password hash
+    const userResult = await db.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = userResult.rows[0];
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'Current password is incorrect' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await db.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, req.user.id]);
+
+    return res.json({ message: 'Password changed successfully' });
+  } catch (err) {
+    console.error('Change password error:', err);
+    return res.status(500).json({ error: 'Server error changing password' });
+  }
+};
+
+module.exports = { register, login, getProfile, updateProfile, changePassword, forgotPassword, resetPassword };

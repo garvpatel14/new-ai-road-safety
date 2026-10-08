@@ -30,7 +30,7 @@ const getHazardsGeoJSON = async (req, res) => {
         )
       ) as geojson
       FROM damage_reports
-      WHERE geom IS NOT NULL;
+      WHERE geom IS NOT NULL AND status != 'Resolved';
     `);
 
     const geojson = result.rows[0]?.geojson || { type: 'FeatureCollection', features: [] };
@@ -107,11 +107,15 @@ const planSafeRoute = async (req, res) => {
         ST_Distance(r.geom::geography, route_line.geom_geog) as distance_from_path
       FROM damage_reports r, route_line
       WHERE ST_DWithin(r.geom::geography, route_line.geom_geog, 500) -- within 500m of direct line
+        AND r.status != 'Resolved'
       ORDER BY distance_from_path ASC;
     `;
 
     const hazardCheck = await db.query(hazardQuery, [sLng, sLat, eLng, eLat]);
     const detectedHazards = hazardCheck.rows;
+
+    // Determine if any critical hazards detected
+    const hasCritical = detectedHazards.some(h => h.severity === 'Critical');
 
     // Generate safe waypoints avoiding high hazards
     const midpointLat = (sLat + eLat) / 2;

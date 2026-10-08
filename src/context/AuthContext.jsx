@@ -42,11 +42,7 @@ export const AuthProvider = ({ children }) => {
   const register = async (name, email, password) => {
     try {
       const response = await api.post('/auth/register', { name, email, password });
-      const { user: registeredUser, token } = response.data;
-      const completeUser = { ...registeredUser, token };
-      setUser(completeUser);
-      setIsAuthenticated(true);
-      return completeUser;
+      return response.data;
     } catch (err) {
       // Propagate the real error — no mock fallback
       const message =
@@ -69,11 +65,31 @@ export const AuthProvider = ({ children }) => {
     }));
   };
 
-  const updateUserProfile = (updatedData) => {
-    setUser(prev => ({
-      ...prev,
-      ...updatedData
-    }));
+  const updateUserProfile = async (updatedData) => {
+    try {
+      const response = await api.put('/auth/profile', updatedData);
+      const updatedUser = response.data.user;
+      setUser(prev => ({
+        ...prev,
+        ...updatedUser,
+      }));
+      return response.data;
+    } catch (err) {
+      const message =
+        err?.response?.data?.error || err.message || 'Failed to update profile';
+      throw new Error(message);
+    }
+  };
+
+  const changePassword = async (currentPassword, newPassword) => {
+    try {
+      const response = await api.put('/auth/change-password', { currentPassword, newPassword });
+      return response.data;
+    } catch (err) {
+      const message =
+        err?.response?.data?.error || err.message || 'Failed to change password';
+      throw new Error(message);
+    }
   };
 
   return (
@@ -86,6 +102,7 @@ export const AuthProvider = ({ children }) => {
         logout,
         toggleRole,
         updateUserProfile,
+        changePassword,
       }}
     >
       {children}

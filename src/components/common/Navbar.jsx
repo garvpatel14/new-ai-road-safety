@@ -72,9 +72,9 @@ export const Navbar = ({ onToggleSidebar, isSidebarOpen, isPublic = false }) => 
               <span className="w-2 h-2 rounded-full bg-safety-500 animate-ping" />
               Live Scanner
             </Link>
-            {isAdmin && (
+            {(isPublic || isAdmin) && (
               <Link
-                to="/map"
+                to={isPublic ? '/login' : (isAuthenticated ? '/map' : '/login')}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition"
               >
                 <MapPin className="w-3.5 h-3.5 text-emerald-500" />
@@ -192,11 +192,9 @@ export const Navbar = ({ onToggleSidebar, isSidebarOpen, isPublic = false }) => 
                       }}
                       className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-200/50 dark:hover:bg-slate-800/60 transition"
                     >
-                      <img
-                        src={user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
-                        alt={user?.name}
-                        className="w-8 h-8 rounded-lg object-cover ring-2 ring-brand-500/30"
-                      />
+                      <div className="w-8 h-8 rounded-lg bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-600 dark:text-brand-400">
+                        <User className="w-4 h-4" />
+                      </div>
                       <span className="hidden lg:inline text-xs font-medium text-slate-700 dark:text-slate-200">
                         {user?.name}
                       </span>

@@ -58,13 +58,13 @@ export const SafeRoutePage = () => {
   const [audioAlerts, setAudioAlerts] = useState(true);
   const animIntervalRef = useRef(null);
 
-  // Fetch real backend reports if available
+  // Fetch real backend reports if available (active hazards only)
   useEffect(() => {
     const fetchReports = async () => {
       try {
-        const res = await api.get('/reports');
+        const res = await api.get('/reports', { params: { status: 'Active' } });
         if (res.data?.reports && res.data.reports.length > 0) {
-          setReports(res.data.reports);
+          setReports(res.data.reports.filter(r => (r.status || '').toLowerCase() !== 'resolved'));
         }
       } catch (err) {
         // Uses authentic Anand INITIAL_REPORTS fallback

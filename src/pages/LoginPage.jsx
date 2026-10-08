@@ -23,7 +23,7 @@ export const LoginPage = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Ensure fields stay blank upon loading the page and prevent browser auto-fill
+  // Ensure fields stay completely blank upon loading the page and prevent browser auto-fill
   useEffect(() => {
     setEmail('');
     setPassword('');
@@ -31,7 +31,7 @@ export const LoginPage = () => {
       setEmail('');
       setPassword('');
       setIsReadOnly(false);
-    }, 300);
+    }, 150);
     return () => clearTimeout(timer);
   }, []);
 
@@ -104,7 +104,7 @@ export const LoginPage = () => {
                 id="auth_usr_id"
                 readOnly={isReadOnly}
                 onFocus={() => setIsReadOnly(false)}
-                autoComplete="off"
+                autoComplete="new-password"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -133,7 +133,7 @@ export const LoginPage = () => {
                 id="auth_usr_sec"
                 readOnly={isReadOnly}
                 onFocus={() => setIsReadOnly(false)}
-                autoComplete="one-time-code"
+                autoComplete="new-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

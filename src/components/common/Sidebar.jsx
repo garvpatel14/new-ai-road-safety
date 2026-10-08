@@ -16,7 +16,6 @@ import {
   Radio,
   Flame,
   Wrench,
-  UserCheck,
   Activity
 } from 'lucide-react';
 
@@ -27,7 +26,6 @@ export const Sidebar = ({ isOpen, onClose }) => {
     { name: 'Live Road Scan', path: '/live-scan', icon: Camera, badge: 'HUD' },
     { name: 'Safe Route Planner', path: '/safe-route', icon: Navigation, badge: 'AI' },
     { name: 'Report Damage', path: '/report-damage', icon: AlertTriangle },
-    { name: 'Analytics', path: '/analytics', icon: BarChart3 },
     { name: 'My Reports', path: '/my-reports', icon: FileText },
     { name: 'Notifications', path: '/notifications', icon: Bell },
     { name: 'Profile', path: '/profile', icon: User },
@@ -37,7 +35,6 @@ export const Sidebar = ({ isOpen, onClose }) => {
     { name: 'Admin Dashboard', path: '/admin', icon: ShieldCheck, badge: 'Admin' },
     { name: 'Road Surface Heatmap', path: '/admin/heatmap', icon: Flame, badge: 'Heat' },
     { name: 'Pothole Management', path: '/admin/potholes', icon: FileText, badge: 'Queue' },
-    { name: 'Road Verification Desk', path: '/admin/verification', icon: UserCheck, badge: 'Audit' },
     { name: 'Interactive Map', path: '/map', icon: MapPin },
     { name: 'City Analytics', path: '/analytics', icon: BarChart3 },
     { name: 'All Damage Reports', path: '/my-reports', icon: FileText },

@@ -24,7 +24,6 @@ const AdminDashboardPage = lazy(() => import('../pages/AdminDashboardPage').then
 const RoadHeatmapPage = lazy(() => import('../pages/RoadHeatmapPage').then(m => ({ default: m.RoadHeatmapPage })));
 const PotholeManagementPage = lazy(() => import('../pages/PotholeManagementPage').then(m => ({ default: m.PotholeManagementPage })));
 const RepairManagementPage = lazy(() => import('../pages/RepairManagementPage').then(m => ({ default: m.RepairManagementPage })));
-const RoadVerificationPage = lazy(() => import('../pages/RoadVerificationPage').then(m => ({ default: m.RoadVerificationPage })));
 const AnalyticsPage = lazy(() => import('../pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
 
 import { useAuth } from '../context/AuthContext';
@@ -83,7 +82,6 @@ export const AppRoutes = () => {
           <Route path="/admin/heatmap" element={<AdminRoute><RoadHeatmapPage /></AdminRoute>} />
           <Route path="/admin/potholes" element={<AdminRoute><PotholeManagementPage /></AdminRoute>} />
           <Route path="/admin/repairs" element={<AdminRoute><RepairManagementPage /></AdminRoute>} />
-          <Route path="/admin/verification" element={<AdminRoute><RoadVerificationPage /></AdminRoute>} />
           <Route path="/analytics" element={<AdminRoute><AnalyticsPage /></AdminRoute>} />
         </Route>
 

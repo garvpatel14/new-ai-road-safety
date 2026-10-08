@@ -9,49 +9,56 @@ import {
   Key,
   Save,
   LogOut,
-  Camera,
   CheckCircle2,
   Bell
 } from 'lucide-react';
 
 export const ProfilePage = () => {
-  const { user, updateUserProfile, logout } = useAuth();
+  const { user, updateUserProfile, changePassword, logout } = useAuth();
   const { addToast } = useNotifications();
 
-  const [name, setName] = useState(user?.name || 'Alex Morgan');
-  const [email, setEmail] = useState(user?.email || 'alex.morgan@saferoad.ai');
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [avatar, setAvatar] = useState(user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80');
+  const [saving, setSaving] = useState(false);
+  const [changingPw, setChangingPw] = useState(false);
 
-  const handleProfileSave = (e) => {
+  const handleProfileSave = async (e) => {
     e.preventDefault();
-    updateUserProfile({ name, email, avatar });
-    addToast('Profile details updated successfully!', 'success');
+    setSaving(true);
+    try {
+      await updateUserProfile({ name, email });
+      addToast('Profile details updated successfully!', 'success');
+    } catch (err) {
+      addToast(err.message || 'Failed to update profile.', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleChangePassword = (e) => {
+  const handleChangePassword = async (e) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
       addToast('New passwords do not match.', 'error');
       return;
     }
-    addToast('Password updated securely.', 'success');
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-  };
-
-  const handleAvatarUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatar(reader.result);
-        addToast('Avatar picture updated!', 'info');
-      };
-      reader.readAsDataURL(file);
+    if (newPassword.length < 6) {
+      addToast('New password must be at least 6 characters.', 'error');
+      return;
+    }
+    setChangingPw(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      addToast('Password updated securely.', 'success');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      addToast(err.message || 'Failed to change password.', 'error');
+    } finally {
+      setChangingPw(false);
     }
   };
 
@@ -68,18 +75,10 @@ export const ProfilePage = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
-        {/* AVATAR & QUICK USER CARD */}
+        {/* QUICK USER CARD */}
         <Card className="md:col-span-1 text-center space-y-4">
-          <div className="relative w-28 h-28 mx-auto">
-            <img
-              src={avatar}
-              alt={name}
-              className="w-28 h-28 rounded-full object-cover ring-4 ring-brand-500/30"
-            />
-            <label className="absolute bottom-0 right-0 p-2 rounded-full bg-brand-600 text-white cursor-pointer hover:bg-brand-500 shadow-lg transition">
-              <Camera className="w-4 h-4" />
-              <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
-            </label>
+          <div className="w-28 h-28 mx-auto rounded-full bg-brand-500/10 flex items-center justify-center ring-4 ring-brand-500/30">
+            <User className="w-12 h-12 text-brand-500" />
           </div>
 
           <div>
@@ -134,9 +133,10 @@ export const ProfilePage = () => {
 
               <button
                 type="submit"
-                className="px-5 py-2.5 rounded-xl bg-brand-600 text-white font-bold text-xs shadow-md hover:bg-brand-500 transition flex items-center gap-2"
+                disabled={saving}
+                className="px-5 py-2.5 rounded-xl bg-brand-600 text-white font-bold text-xs shadow-md hover:bg-brand-500 transition flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <Save className="w-4 h-4" /> Save Profile Changes
+                <Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save Profile Changes'}
               </button>
             </form>
           </Card>
@@ -193,9 +193,10 @@ export const ProfilePage = () => {
 
               <button
                 type="submit"
-                className="px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs shadow-md hover:bg-slate-800 transition flex items-center gap-2"
+                disabled={changingPw}
+                className="px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-bold text-xs shadow-md hover:bg-slate-800 transition flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <Key className="w-4 h-4" /> Update Security Key
+                <Key className="w-4 h-4" /> {changingPw ? 'Updating...' : 'Update Security Key'}
               </button>
             </form>
           </Card>

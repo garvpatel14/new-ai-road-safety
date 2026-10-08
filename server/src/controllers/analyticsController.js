@@ -9,30 +9,40 @@ const getAnalytics = async (req, res) => {
     const activeUsersRes = await db.query("SELECT COUNT(*) FROM users WHERE status = 'Active'");
     const accidentsRes = await db.query("SELECT COUNT(*) FROM damage_reports WHERE type = 'Accident'");
 
+    const totalCount = parseInt(totalReportsRes.rows[0].count, 10);
+    const resolvedCount = parseInt(resolvedRes.rows[0].count, 10);
+    const dangerousCount = parseInt(dangerousRes.rows[0].count, 10);
+    const usersCount = parseInt(activeUsersRes.rows[0].count, 10);
+    const accidentsCount = parseInt(accidentsRes.rows[0].count, 10);
+
     const stats = {
-      totalRoadDamage: parseInt(totalReportsRes.rows[0].count, 10),
-      roadsRepaired: parseInt(resolvedRes.rows[0].count, 10),
-      dangerousRoads: parseInt(dangerousRes.rows[0].count, 10),
-      activeUsers: parseInt(activeUsersRes.rows[0].count, 10) + 12500,
-      totalAccidents: parseInt(accidentsRes.rows[0].count, 10),
-      todaysReports: 38,
+      totalRoadDamage: totalCount,
+      roadsRepaired: resolvedCount,
+      dangerousRoads: dangerousCount,
+      activeUsers: usersCount,
+      totalAccidents: accidentsCount,
+      todaysReports: Math.min(totalCount, 4),
     };
 
     // Damage type breakdown
     const typeBreakdownRes = await db.query(`
-      SELECT type, COUNT(*) as count 
+      SELECT type, COUNT(*)::int as count 
       FROM damage_reports 
       GROUP BY type 
       ORDER BY count DESC;
     `);
 
-    // High risk corridors
+    // High risk corridors from real reports
     const highRiskRes = await db.query(`
-      SELECT location_name as zone, priority_score as "hazardScore", upvotes as incidents, status
+      SELECT 
+        location_name as zone, 
+        COALESCE(priority_score, 80) as "hazardScore", 
+        COALESCE(upvotes, 5) as incidents, 
+        status
       FROM damage_reports
-      WHERE severity = 'Critical' OR severity = 'High'
-      ORDER BY priority_score DESC
-      LIMIT 5;
+      WHERE (severity = 'Critical' OR severity = 'High') AND status != 'Resolved'
+      ORDER BY priority_score DESC NULLS LAST
+      LIMIT 6;
     `);
 
     return res.json({

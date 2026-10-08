@@ -146,7 +146,49 @@ const verifyQueueItem = async (req, res) => {
     return res.json({ item });
   } catch (err) {
     console.error('Verify item error:', err);
-    return res.status(500).json({ error: 'Failed to verify item' });
+  }
+};
+
+// Get all registered users for Admin User Management
+const getUsers = async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT 
+        id, name, email, role, status,
+        COALESCE(reports_submitted, 0) as "reportsSubmitted",
+        avatar, created_at as "createdAt"
+      FROM users
+      ORDER BY created_at DESC;
+    `);
+    return res.json({ users: result.rows });
+  } catch (err) {
+    console.error('Get users error:', err);
+    return res.status(500).json({ error: 'Failed to retrieve users' });
+  }
+};
+
+// Update user role
+const updateUserRole = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+    if (!role) {
+      return res.status(400).json({ error: 'Role is required' });
+    }
+
+    const result = await db.query(
+      'UPDATE users SET role = $1 WHERE id = $2 RETURNING id, name, email, role, status, reports_submitted as "reportsSubmitted"',
+      [role, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    return res.json({ user: result.rows[0] });
+  } catch (err) {
+    console.error('Update user role error:', err);
+    return res.status(500).json({ error: 'Failed to update user role' });
   }
 };
 
@@ -156,4 +198,6 @@ module.exports = {
   updateWorkOrder,
   getVerificationQueue,
   verifyQueueItem,
+  getUsers,
+  updateUserRole,
 };

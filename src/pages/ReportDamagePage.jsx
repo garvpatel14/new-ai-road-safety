@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import { DEFAULT_POTHOLE_IMAGE, DEFAULT_CRACK_IMAGE } from '../utils/imageUtils';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import {
@@ -182,7 +183,7 @@ export const ReportDamagePage = () => {
   const [aiDetections, setAiDetections] = useState([]);
   const [showAiBoxes, setShowAiBoxes] = useState(true);
   const [aiModelInfo, setAiModelInfo] = useState({ online: false, mode: 'idle', fps: null, model: '' });
-  const [aiSensitivity, setAiSensitivity] = useState(0.20);
+  const [aiSensitivity, setAiSensitivity] = useState(0.45);
   const [activeBoxIndex, setActiveBoxIndex] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -341,7 +342,7 @@ export const ReportDamagePage = () => {
 
   // ── Helper: Call FastAPI YOLOv8 Microservice ────────────────────────────────
   const inferFrameBase64 = async (base64Data, customConf = aiSensitivity) => {
-    const ML_ENDPOINTS = ['http://127.0.0.1:8000', 'http://localhost:8000'];
+    const ML_ENDPOINTS = ['/ml', 'http://127.0.0.1:8000', 'http://localhost:8000'];
     for (const endpoint of ML_ENDPOINTS) {
       try {
         const response = await fetch(`${endpoint}/detect`, {
@@ -402,6 +403,18 @@ export const ReportDamagePage = () => {
       const data = await inferFrameBase64(base64Data, customConf);
 
       if (data) {
+        // ── Scene rejected: non-road image detected ──────────────────────────
+        if (data.scene_rejected || data.mode === 'scene_rejected') {
+          setAiDetections([]);
+          setAiModelInfo({ online: true, mode: 'scene_rejected', fps: data.fps, model: data.model });
+          setAiConfidence(null);
+          addToast(
+            `⚠️ Not a road image: ${data.scene_message || 'Please upload a real road photo or video.'}`,
+            'warning'
+          );
+          return;
+        }
+
         const detections = data.detections || [];
         setAiDetections(detections);
         setAiModelInfo({
@@ -769,7 +782,14 @@ export const ReportDamagePage = () => {
       return;
     }
     const url = URL.createObjectURL(file);
-    setUploadedFile({ file, preview: url, type: isImage ? 'image' : 'video' });
+    setUploadedFile({ file, preview: url, dataUrl: null, type: isImage ? 'image' : 'video' });
+    if (isImage) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setUploadedFile((prev) => (prev ? { ...prev, dataUrl: reader.result } : prev));
+      };
+      reader.readAsDataURL(file);
+    }
     setAiConfidence(null);
     setAiDetections([]);
     setVideoHazards([]);
@@ -958,7 +978,9 @@ export const ReportDamagePage = () => {
       lat: parseFloat(lat) || (streetApproxLat || 22.5569),
       lng: parseFloat(lng) || (streetApproxLng || 72.9560),
       description,
-      image: uploadedFile?.preview || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80',
+      image: (uploadedFile?.dataUrl && typeof uploadedFile.dataUrl === 'string' && uploadedFile.dataUrl.startsWith('data:'))
+        ? uploadedFile.dataUrl
+        : ((damageType || '').toLowerCase().includes('crack') ? DEFAULT_CRACK_IMAGE : DEFAULT_POTHOLE_IMAGE),
       reportedBy: user?.name || 'Civilian Reporter',
       aiConfidence: maxDet ? `${maxDet.confidence}%` : (aiConfidence ? '96.8%' : '92.0%'),
       district: selectedArea || 'Anand City',
@@ -1210,9 +1232,9 @@ export const ReportDamagePage = () => {
                       <Sliders className="w-3.5 h-3.5" />
                       <span className="text-[11px] font-medium hidden sm:inline">Sensitivity:</span>
                       {[
-                        { label: 'High (0.15)', val: 0.15 },
-                        { label: 'Balanced (0.20)', val: 0.20 },
-                        { label: 'Strict (0.35)', val: 0.35 },
+                        { label: 'High (0.30)', val: 0.30 },
+                        { label: 'Balanced (0.45)', val: 0.45 },
+                        { label: 'Strict (0.60)', val: 0.60 },
                       ].map((s) => (
                         <button
                           key={s.val}

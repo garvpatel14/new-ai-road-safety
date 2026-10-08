@@ -34,8 +34,8 @@ export const Footer = () => {
             <ul className="space-y-2 text-xs">
               <li><Link to="/live-scan" className="hover:text-white transition">Live Road Scanner</Link></li>
               <li><Link to="/safe-route" className="hover:text-white transition">Safe Route Planner</Link></li>
-              <li><Link to="/notifications" className="hover:text-white transition">Safety Notifications</Link></li>
-              <li><Link to="/analytics" className="hover:text-white transition">Road Trends & Insights</Link></li>
+              <li><Link to="/report-damage" className="hover:text-white transition">Report Road Damage</Link></li>
+              <li><Link to="/my-reports" className="hover:text-white transition">My Damage Reports</Link></li>
             </ul>
           </div>
 
